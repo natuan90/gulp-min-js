@@ -1,0 +1,35 @@
+window.hotelRecommendCityList = {
+    hotelCities: [
+        {name: 'ソウル', regionCode: '178308'},
+        {name: 'ミョンドン', regionCode: '6156735'},
+        {name: '東大門', regionCode: '6049710'},
+        {name: '江南', regionCode: '6049712'},
+        {name: 'プサン', regionCode: '602043'},
+        {name: '台北', regionCode: '180030'},
+        {name: '高雄', regionCode: '6177725'},
+        {name: '香港', regionCode: '184245'},
+        {name: '九龍', regionCode: '6059'},
+        {name: '上海', regionCode: '180026'},
+        {name: 'バンコク', regionCode: '178236'},
+        {name: 'プーケット', regionCode: '6046393'},
+        {name: 'マニラ', regionCode: '178282'},
+        {name: 'セブ', regionCode: '800'},
+        {name: 'デンパサール（バリ島）', regionCode: '602651'},
+        {name: 'シンガポール', regionCode: '3168'},
+        {name: 'ダナン', regionCode: '974'},
+        {name: 'ホーチミン', regionCode: '178262'},
+        {name: 'ハノイ', regionCode: '1428'},
+        {name: 'クアラルンプール', regionCode: '180008'},
+        {name: 'ホノルル', regionCode: '1488'},
+        {name: 'グアム', regionCode: '70'},
+        {name: 'ロサンゼルス', regionCode: '178280'},
+        {name: 'ニューヨーク', regionCode: '178293'},
+        {name: 'ラスベガス', regionCode: '178276'},
+        {name: 'パリ', regionCode: '179898'},
+        {name: 'ロンドン', regionCode: '178279'},
+        {name: 'バルセロナ', regionCode: '179992'},
+        {name: 'ローマ', regionCode: '6051850'},
+        {name: '東京', regionCode: '179900'}
+    ]
+};
+
