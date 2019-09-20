@@ -8,8 +8,8 @@
 
   var hostName = document.location.hostname;
   var apiPath = "";
-  if( hostName == "localhost" || hostName == "192.168.33.10"){
-      apiPath = "https://www.skygate.co.jp";
+  if( hostName == "localhost"){
+      apiPath = "https://sp.skygate.co.jp";
   }
 
   var getUnderScoreTemplateString = function(id) {

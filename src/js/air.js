@@ -2,31 +2,19 @@
     var uuid = skygate.util.uuid;
     var format = skygate.util.format;
     var computeDate = skygate.util.date.computeDate;
-    var diffDate = skygate.util.date.diffDate;
     var toYmdString = skygate.util.date.toYmdString;
     var ymdStringToObject = skygate.util.date.ymdStringToObject;
     var ymdStringToObjectWithSeparator = skygate.util.date.ymdStringToObjectWithSeparator;
     var objectToQueryParameters = skygate.util.objectToQueryParameters;
-    var airSuggestionUtil = skygate.air.util;
 
-    var ns = airlink.model.common.ui_integration_multi_search_form;
-    var MultiSearchFormBaseModel = ns.MultiSearchFormBaseModel;
+    var msf = airlink.model.common.multi_search_form;
+    var MultiSearchFormBaseModel = msf.MultiSearchFormBaseModel;
 
     var AirFormModel = MultiSearchFormBaseModel.extend({
 
         ABLE_TO_BUYING_NEXT_DAY_TIME: 18,
 
         DEFAULT_INTERVAL: 3,
-
-        errorMessage: {
-            required: '{0}を選択してください。',
-            invalidDate: '{0}は存在しない日付です。',
-            invalidPlace: '{0}を正しく入力してください。',
-            samePlace: '出発地とは異なる場所を選択してください。',
-            lastDestinationWithinJapan: '最終目的地は日本国内の空港を入力してください。',
-            inputMore: '{0}を正しく入力してください。',
-            dateInPast: '{0}は今日以降の日付を指定してください。',
-        },
 
         googleAnalyticsSetting: {
             categoryPrefix: 'AO_searchpanel_',
@@ -67,7 +55,6 @@
             attrs.directionsOverseas = window.directionsOverSeas || [];
             attrs.reverseDirections = this.createReverseDirections(attrs.directions);
             attrs.reverseDirectionsOverseas = this.createReverseDirections(attrs.directionsOverseas);
-            // attrs.citySuggestionList = this._createDataAutoComplete(this.getDataSuggestion());
         },
 
         hasEffectiveChildForDirection: function(direction) {
@@ -210,18 +197,6 @@
             }
         },
 
-        isPastDate: function(text){
-            if (!text) return false;
-            try {
-                var d = text.split('/');
-                var date = new Date(d[0], +d[1] - 1, d[2]);
-                var today = computeDate(new Date(), 0);
-                return diffDate(date, today) >= 0 ? false: true;
-            } catch (error) {
-                return false;
-            }
-        },
-
         validateAbroadFromDate: function(fromDate) {
             var date = ymdStringToObjectWithSeparator(fromDate);
             var limitDate = this.getAbroadDefaultFrom();
@@ -231,155 +206,58 @@
         validateOneway: function(searchCondition, isAbroad) {
             // FIXME いけてないvalidation
             var errors = [];
-            var isDepartureAndDestinationValid = true;
             if (!searchCondition.departure) {
-                errors.push({
-                    type: '.js-set-city:eq(0)',
-                    message: format(this.errorMessage.required, '出発地')
-                });
-                isDepartureAndDestinationValid = false;
-            } else if (searchCondition.departure.match(/[^A-Za-z]+/) ||
-                searchCondition.departure.length < 3 ||
-                !airSuggestionUtil.getCityInfo(searchCondition.departure)){
-                errors.push({
-                    type: '.js-set-city:eq(0)',
-                    message: format(this.errorMessage.inputMore, '出発地')
-                });
-                isDepartureAndDestinationValid = false;
+                errors.push(format(this.errorMessage.required, '出発地'));
             }
 
             var destinations = searchCondition.destinations;
-            if (destinations.length !== 1 || !destinations[0]) {
-                errors.push({
-                    type: '.js-set-city:eq(1)',
-                    message: format(this.errorMessage.required, '目的地')
-                });
-                isDepartureAndDestinationValid = false;
-            } else if (destinations[0].match(/[^A-Za-z]+/) ||
-                destinations[0].length < 3 ||
-                !airSuggestionUtil.getCityInfo(searchCondition.destinations[0])) {
-                errors.push({
-                    type: '.js-set-city:eq(1)',
-                    message: format(this.errorMessage.inputMore, '目的地')
-                });
-                isDepartureAndDestinationValid = false;
-            }
-
-            if (isDepartureAndDestinationValid && searchCondition.departure == searchCondition.destinations){
-                errors.push({
-                    type: '.js-set-city:eq(1)',
-                    message: this.errorMessage.samePlace
-                });
+            if (destinations.length !== 1 || !destinations[0] || destinations[0].match(/[^A-Za-z]+/)) {
+                errors.push(format(this.errorMessage.required, '目的地'));
             }
 
             var fromDate = searchCondition.fromDate;
             if (!fromDate) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.required, '出発日')
-                });
+                errors.push(format(this.errorMessage.required, '出発日'));
             } else if (!this.validDate(fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.invalidDate, '出発日')
-                });
-            } else if (this.isPastDate(fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.dateInPast, '出発日')
-                });
+                errors.push(format(this.errorMessage.invalidDate, '出発日'));
             } else if(isAbroad && !this.validateAbroadFromDate(fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(
-                        '海外発の最短出発日は{0}です。',
-                        toYmdString(this.getAbroadDefaultFrom(), '/')
-                    )
-                });
+                errors.push(format(
+                    '海外発の最短出発日は{0}です。',
+                    toYmdString(this.getAbroadDefaultFrom(), '/')
+                ));
             }
             return errors;
         },
 
         validateRoundtrip: function(searchCondition, isAbroad) {
             var errors = [];
-            var isDepartureAndDestinationValid = true;
             if (!searchCondition.departure) {
-                errors.push({
-                    type: '.js-set-city:eq(0)',
-                    message: format(this.errorMessage.required, '出発地')
-                });
-                isDepartureAndDestinationValid = false;
-            } else if (searchCondition.departure.match(/[^A-Za-z]+/) ||
-                searchCondition.departure.length < 3 ||
-                !airSuggestionUtil.getCityInfo(searchCondition.departure)){
-                errors.push({
-                    type: '.js-set-city:eq(0)',
-                    message: format(this.errorMessage.inputMore, '出発地')
-                });
-                isDepartureAndDestinationValid = false;
+                errors.push(format(this.errorMessage.required, '出発地'));
             }
 
             var destinations = searchCondition.destinations;
-            if (destinations.length !== 1 || !destinations[0]) {
-                errors.push({
-                    type: '.js-set-city:eq(1)',
-                    message: format(this.errorMessage.required, '目的地')
-                });
-                isDepartureAndDestinationValid = false;
-            } else if (destinations[0].match(/[^A-Za-z]+/) || destinations[0].length < 3 || !airSuggestionUtil.getCityInfo(destinations[0])) {
-                errors.push({
-                    type: '.js-set-city:eq(1)',
-                    message: format(this.errorMessage.inputMore, '目的地')
-                });
-                isDepartureAndDestinationValid = false;
+            if (destinations.length !== 1 || !destinations[0] || destinations[0].match(/[^A-Za-z]+/)) {
+                errors.push(format(this.errorMessage.required, '目的地'));
             }
-
-            if (isDepartureAndDestinationValid && searchCondition.departure == searchCondition.destinations[0]){
-                errors.push({
-                    type: '.js-set-city:eq(1)',
-                    message: this.errorMessage.samePlace
-                });
+            if (!searchCondition.arrival) {
+                errors.push(format(this.errorMessage.required, '帰国到着地'));
             }
 
             var dateInvalid = false;
             var fromDate = searchCondition.fromDate;
             var toDates = searchCondition.toDates;
             if (!fromDate) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.required, '出発日')
-                });
+                errors.push(format(this.errorMessage.required, '出発日'));
                 dateInvalid = true;
             } else if (!this.validDate(fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.invalidDate, '出発日')
-                });
-                dateInvalid = true;
-            } else if (this.isPastDate(fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.dateInPast, '出発日')
-                });
+                errors.push(format(this.errorMessage.invalidDate, '出発日'));
                 dateInvalid = true;
             }
             if (toDates.length !== 1 || !toDates[0]) {
-                errors.push({
-                    type: '.js-date-pick:eq(1)',
-                    message: format(this.errorMessage.required, '現地出発日')
-                });
+                errors.push(format(this.errorMessage.required, '現地出発日'));
                 dateInvalid = true;
             } else if (!this.validDate(toDates[0])) {
-                errors.push({
-                    type: '.js-date-pick:eq(1)',
-                    message: format(this.errorMessage.invalidDate, '現地出発日')
-                });
-                dateInvalid = true;
-            } else if (this.isPastDate(toDates[0])) {
-                errors.push({
-                    type: '.js-date-pick:eq(1)',
-                    message: format(this.errorMessage.dateInPast, '現地出発日')
-                });
+                errors.push(format(this.errorMessage.invalidDate, '現地出発日'));
                 dateInvalid = true;
             }
 
@@ -387,123 +265,63 @@
                 var from = ymdStringToObjectWithSeparator(fromDate);
                 var to = ymdStringToObjectWithSeparator(toDates[0]);
                 if (from > to) {
-                    errors.push({
-                        type: '.js-date-pick:eq(0)',
-                        message: '出発日の指定が不正です。'
-                    });
+                    errors.push('出発日の指定が不正です。');
                     dateInvalid = true;
                 }
             }
             if (!dateInvalid &&  isAbroad && !this.validateAbroadFromDate(searchCondition.fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format('海外発の最短出発日は{0}です。', toYmdString(this.getAbroadDefaultFrom(), '/')
-                    )
-                });
+                errors.push(format(
+                    '海外発の最短出発日は{0}です。',
+                    toYmdString(this.getAbroadDefaultFrom(), '/')
+                ));
             }
             return errors;
         },
 
-        validateStopoverOrOpenjaw: function(searchCondition, openjawInfos, isAbroad, departures, destinations) {
+        validateStopoverOrOpenjaw: function(searchCondition, openjawInfos, isAbroad) {
             // FIXME strict validation.
             var errors = [];
-            var departureValidate = _.map(departures, function(departure){
-                var validResult = this._validatePlace(departure);
-                return validResult;
-            }, this);
+            if (!searchCondition.departure) {
+                errors.push(format(this.errorMessage.required, '出発地'));
+            }
 
-            var destinationsValidate = _.map(_.range(0, _.size(destinations)), function(idx){
-                var validResult = this._validatePlace(destinations[idx]);
-                if (validResult.isValid && departureValidate[idx].isValid && destinations[idx] == departures[idx]){
-                    validResult.isValid = false;
-                    validResult.message = this.errorMessage.samePlace;
-                }
-                return validResult;
-            }, this);
-
-            var idx = 0;
-            _.each(departureValidate, function(validResult){
-                if (!validResult.isValid){
-                    errors.push({
-                        type: format('.js-set-city:eq({0})', idx * 2),
-                        message: format(validResult.message, '出発地')
-                    });
-                }
-                idx = idx + 1;
-            }, this);
-
-            var idx = 0;
-            _.each(destinationsValidate, function(validResult){
-                if (!validResult.isValid){
-                    errors.push({
-                        type: format('.js-set-city:eq({0})', (idx * 2) + 1),
-                        message: format(validResult.message, '目的地')
-                    });
-                }
-                idx = idx + 1;
-            }, this);
+            var destinations = searchCondition.destinations;
+            if (destinations.length < 1 || _.filter(destinations, function(dest) { return !dest || dest.match(/[^A-Za-z]+/);}).length > 0) {
+                errors.push(format(this.errorMessage.required, '目的地'));
+            }
+            if (!searchCondition.arrival) {
+                errors.push(format(this.errorMessage.required, '帰国到着地'));
+            }
 
             var fromDate = searchCondition.fromDate;
+            var toDates = searchCondition.toDates;
             var dateInvalid = false;
             if (!fromDate) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.required, '出発日')
-                });
+                errors.push(format(this.errorMessage.required, '出発日'));
                 dateInvalid = true;
             } else if (!this.validDate(fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.invalidDate, '出発日')
-                });
-                dateInvalid = true;
-            } else if (this.isPastDate(fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(this.errorMessage.dateInPast, '出発日')
-                });
+                errors.push(format(this.errorMessage.invalidDate, '出発日'));
                 dateInvalid = true;
             }
 
-            var toDates = searchCondition.toDates;
-            var idx = 1;
-            var toDatesRequiredResult = _.map(toDates, function(toDate, index) {
+            var toDatesRequiredResult = _.every(toDates, function(toDate, index) {
                 var isOpenjaw = openjawInfos[index];
-                var isRequired = false;
-                if (!isOpenjaw){
-                    if (!toDate) {
-                        dateInvalid = true;
-                        errors.push({
-                            type: format('.js-date-pick:eq({0})', idx),
-                            message: format(this.errorMessage.required, '出発日')
-                        });
-                        isRequired = true;
-                    }
-                    idx = idx + 1;
-                 }
-                 return isRequired;
+                if (!isOpenjaw && !toDate) {
+                    dateInvalid = true;
+                    errors.push(format(this.errorMessage.required, '移動日'));
+                    return false;
+                }
+                return true;
             }, this);
-
-            var idx = 1;
             if (toDatesRequiredResult) {
-                _.each(toDates, function(toDate, index) {
+                _.every(toDates, function(toDate, index) {
                     var isOpenjaw = openjawInfos[index];
-                    if (!isOpenjaw && !toDatesRequiredResult[index]) {
-                        if (!this.validDate(toDate)) {
-                            dateInvalid = true;
-                            errors.push({
-                                type: format('.js-date-pick:eq({0})', idx),
-                                message: format(this.errorMessage.invalidDate, '出発日')
-                            });
-                        } else if (this.isPastDate(toDate)) {
-                            dateInvalid = true;
-                            errors.push({
-                                type: format('.js-date-pick:eq({0})', idx),
-                                message: format(this.errorMessage.dateInPast, '出発日')
-                            });
-                        }
-                        idx = idx + 1;
+                    if (!isOpenjaw && !this.validDate(toDate)) {
+                        dateInvalid = true;
+                        errors.push(format(this.errorMessage.invalidDate, '移動日'));
+                        return false;
                     }
+                    return true;
                 }, this);
             }
 
@@ -511,30 +329,21 @@
                 var filteredToDates = _.filter(toDates, function(date) {
                     return !!date;
                 });
-                _.reduce(filteredToDates, function(prevDate, toDate, index) {
-                    if (!!toDate) {
-                        if (!dateInvalid && prevDate > toDate) {
-                            dateInvalid = true;
-                            errors.push({
-                                type: format('.js-date-pick:eq({0})', index + 1),
-                                message: '出発日を確認してください。'
-                            });
-                        }
-                        return toDate;
-                    } else {
-                        return prevDate;
+                _.reduce(filteredToDates, function(prevDate, toDate) {
+                    if (!dateInvalid && prevDate > toDate) {
+                        dateInvalid = true;
+                        errors.push('出発日を確認してください。');
                     }
+                    return toDate;
                 }, fromDate, this);
             }
 
+
             if (!dateInvalid && !this.validateAbroadFromDate(searchCondition.fromDate)) {
-                errors.push({
-                    type: '.js-date-pick:eq(0)',
-                    message: format(
-                        '周遊の最短出発日は{0}です。',
-                        toYmdString(this.getAbroadDefaultFrom(), '/')
-                    )
-                });
+                errors.push(format(
+                    '周遊の最短出発日は{0}です。',
+                    toYmdString(this.getAbroadDefaultFrom(), '/')
+                ));
             }
 
             // TODO 移動日...
@@ -631,60 +440,9 @@
 
         getUrl: function (path, params) {
             return format('{0}?{1}', path, objectToQueryParameters(params));
-        },
-        getPortCodeFromText: function(inputValue) {
-            var portCode;
-            if (inputValue.length > 4){
-                portCode = inputValue.substring(1,4).toUpperCase();
-            }
-            return portCode;
-        },
-        // getDataSuggestion: function() {
-        //     return suggestionDataUtil.getAllCityInfo();
-        // },
-        // _createDataAutoComplete(cityList){
-        //     var that = this;
-        //     var cityStringList = [];
-        //     _.each(cityList, function(item) {
-        //         var cityCountryName = that._createAutoSuggestionCityName(item.threeLetter, item.domesticThreeLetter, item.name, item.countryName).cityCountryNameWithKeyword;
-        //         cityStringList.push(cityCountryName);
-        //
-        //         if (!_.isEmpty(item.children)){
-        //             _.each(item.children, function (child) {
-        //                 cityCountryName = that._createAutoSuggestionCityName(child.threeLetter, child.domesticThreeLetter, child.name, child.countryName).cityCountryNameWithKeyword;
-        //                 cityStringList.push(cityCountryName);
-        //             })
-        //         }
-        //     });
-        //     cityStringList = _.uniq(cityStringList);
-        //
-        //     return cityStringList;
-        // },
-        // _createAutoSuggestionCityName: function (cityCode, domesticCityCode, cityName, countryName) {
-        //     var cityCodes = domesticCityCode ? format('（{0}, {1}）', cityCode, domesticCityCode) : format('（{0}）', cityCode);
-        //     var cityCountryName = format('{0}, {1}', cityName, countryName);
-        //     return {
-        //         cityCountryName: cityCountryName,
-        //         cityCountryNameWithKeyword: format('{0}{1}', cityCodes, cityCountryName)
-        //     }
-        // }
-        _validatePlace: function(port){
-            var errorMessage = '';
-            var isPlaceValid =  true;
-            if (!port) {
-                errorMessage = this.errorMessage.required;
-                isPlaceValid = false;
-            } else if (port.match(/[^A-Za-z]+/) ||
-                port.length < 3 ||
-                !airSuggestionUtil.getCityInfo(port)){
-                    errorMessage = this.errorMessage.inputMore;
-                    isPlaceValid = false;
-            }
-            return {isValid: isPlaceValid, message: errorMessage};
-        },
-
+        }
     });
 
-    ns.AirFormModel = AirFormModel;
+    msf.AirFormModel = AirFormModel;
 
 })(window, jQuery);

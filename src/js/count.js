@@ -1,68 +1,84 @@
-(function(window, $) {
+;(function(window, $) {
 
     var $document = $(document);
 
-    var BookmarksCount = Backbone.Model.extend({
+    var BookmarksCountView = Backbone.View.extend({
 
-        // FIXME: use centralized definitions
-        ALL_TYPES: [
-            'saved_search',
-            'favorite',
-            'detail_history',
-            'search_history'
-        ],
-
-        API_URL: {
-            abroad_air: '/common/bookmarks/get_abair_regist_num',
-            dp: '/common/bookmarks/get_dp_regist_num',
-            abroad_hotel: '/common/bookmarks/get_abhotel_regist_num',
-            domestic_hotel: '/common/bookmarks/get_domhotel_regist_num',
-            domestic_air: '/common/bookmarks/get_domair_regist_num'
+        toApiResponseType: {
+            saved_search: 'saved_search',
+            search: 'search_history'
         },
 
-        initialize: function(attributes, options) {
-            this.url = this.API_URL[options.service];
-            this.prefixEventName = 'bookmarks';
-            // isEventNameIncludeServiceName is optional value (true / false / undefined)
-            if (options.isEventNameIncludeServiceName === true) {
-                this.prefixEventName += ':' + options.service;
+        initialize : function(options) {
+            _.bindAll(this, 'getCount', 'renderCount', 'transmitCount');
+
+            this.model = new airlink.model.common.bookmarks.BookmarksCount(null, {
+                service: options.target
+            });
+
+            $document.on('bookmarks:updateCount', this.getCount);
+            $document.on('bookmarks:updateCountCompleted bookmarks:updateCountFailed', this.renderCount);
+            $document.on('bookmarks:requireCount', this.transmitCount);
+
+            if (options.updateCount) {
+                $document.trigger('bookmarks:updateCount');
             }
         },
 
-        // we do not care about consistency of concurrent request
-        getCount: function(types) {
-            var data = {};
-            if (types && types.length > 0) {
-                data['types'] = types.join(',');
+        getCount: function(ev, data) {
+            this.model.getCount(data && data.types);
+        },
+
+        renderCount: function(ev, counts) {
+            if (!counts) {
+                return;
+            }
+
+            var $targets = $('.targetBookmarksCount, .targetBookmarksToggle');
+            if (!$targets.length) {
+                return;
             }
 
             var that = this;
-            this.fetch({
-                data: data,
-                cache: false,
-                success: function() {
-                    $document.trigger(that.prefixEventName + ':updateCountCompleted', that.toJSON());
-                },
-                error: function() {
-                    that.set(that._emptyResponse());
-                    $document.trigger(that.prefixEventName + ':updateCountFailed', that.toJSON());
+            $targets.each(function() {
+                var $target = $(this);
+                var targetTypes = _.map($target.data('type').split(','), function(type) {
+                    return that.toApiResponseType[$.trim(type)];
+                });
+
+                var targetCounts = _.values(_.pick(counts, targetTypes));
+                if (_.isEmpty(targetCounts)) {
+                    return;
+                }
+
+                var sum = _.reduce(targetCounts, function(n, count) { return n + count; }, 0);
+
+                if ($target.hasClass('targetBookmarksCount')) {
+                    $target.text(sum);
+                }
+                if ($target.hasClass('targetBookmarksToggle')) {
+                    var activeClass = $target.data('activeClass');
+                    $target.toggleClass(activeClass, sum > 0);
                 }
             });
         },
 
-        parse: function(response) {
-            return response.status ? response.response : this._emptyResponse();
-        },
+        transmitCount: function(ev, callback) {
+            if (!_.isFunction(callback)) {
+                return;
+            }
 
-        _emptyResponse: function() {
-            return _.reduce(this.ALL_TYPES, function(d, type) {
-                d[type] = 0;
-                return d;
-            }, {});
+            var counts = {};
+            var toType = _.invert(this.toApiResponseType);
+            _.each(this.model.toJSON(), function(value, key) {
+                counts[toType[key]] = value;
+            });
+
+            callback(counts);
         }
 
     });
 
-    skygate.util.namespace('airlink.model.common.bookmarks').BookmarksCount = BookmarksCount;
+    skygate.util.namespace('airlink.view.air.bookmarks').BookmarksCountView = BookmarksCountView;
 
 })(window, jQuery);
